@@ -1,0 +1,77 @@
+# This is a basic workflow that is manually triggered
+
+name: Manual workflow
+
+on:
+  workflow_dispatch:
+
+env:
+  WXWIDGETS_VER: 3.3.1
+
+jobs:
+
+  build-deb:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+          cmake build-essential libssl-dev gettext git pkg-config lsb-release \
+          libgtk-3-dev libcurl4-openssl-dev libwebkit2gtk-4.1-dev wget
+
+      - uses: kenchan0130/actions-system-info@master
+        id: system-info
+
+      - name: Restore wxWidgets from Cache
+        id: restore-cache-wxWidgets
+        uses: actions/cache/restore@v4
+        with:
+          path: ~/wxWidgets-${{env.WXWIDGETS_VER}}
+          key: ${{ runner.os }}-${{ steps.system-info.outputs.name }}-${{ steps.system-info.outputs.release }}-wxWidgets-${{ env.WXWIDGETS_VER }}
+
+      - name: Build wxWidgets
+        if: steps.restore-cache-wxWidgets.outputs.cache-hit != 'true'
+        run: |
+          cd ~
+          wget https://github.com/wxWidgets/wxWidgets/releases/download/v${{env.WXWIDGETS_VER}}/wxWidgets-${{env.WXWIDGETS_VER}}.tar.bz2
+          tar -xjf wxWidgets-${{env.WXWIDGETS_VER}}.tar.bz2
+          cd wxWidgets-${{env.WXWIDGETS_VER}}
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release -DwxBUILD_SHARED=OFF -DwxUSE_STL=ON -DwxBUILD_PRECOMP=OFF
+          cmake --build build
+
+      - name: Install wxWidgets
+        run: |
+          cd ~/wxWidgets-${{env.WXWIDGETS_VER}}
+          sudo cmake --build build --target install
+
+      - name: Save wxWidgets to Cache
+        if: steps.restore-cache-wxWidgets.outputs.cache-hit != 'true'
+        id: save-cache-wxWidgets
+        uses: actions/cache/save@v4
+        with:
+          path: ~/wxWidgets-${{env.WXWIDGETS_VER}}
+          key: ${{ runner.os }}-${{ steps.system-info.outputs.name }}-${{ steps.system-info.outputs.release }}-wxWidgets-${{ env.WXWIDGETS_VER }}
+
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Build project
+        run: |
+          cd $GITHUB_WORKSPACE
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release 
+          cmake --build build 
+
+      - name: print file
+        run: |
+          cd $GITHUB_WORKSPACE
+          cd build
+          file ./wxstatictest
+
+      - name: print ldd
+        run: |
+          cd $GITHUB_WORKSPACE
+          cd build
+          ldd ./wxstatictest
+
