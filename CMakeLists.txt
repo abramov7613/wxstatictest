@@ -6,4 +6,4 @@ find_package(wxWidgets REQUIRED)
 include(${wxWidgets_USE_FILE})
 
 add_executable(${PROJECT_NAME} main.cpp)
-target_link_libraries(${PROJECT_NAME} ${wxWidgets_LIBRARIES} -static)
+target_link_libraries(${PROJECT_NAME} PRIVATE ${wxWidgets_LIBRARIES} -static -lSM)
